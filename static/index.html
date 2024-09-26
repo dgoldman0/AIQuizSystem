@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canaan Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+
+        /* Main content*/
+        .main-content {
+            padding: 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        /* Overlay style */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Login container inside the overlay */
+        #login-container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 300px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        button {
+            padding: 0.75rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #d32f2f;
+        }
+        /* Message history container */
+        #active {
+            background-color: #f9f9f9;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            margin-top: 2rem;
+        }
+
+        /* Message list */
+        #active ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        /* Individual messages */
+        #active ul li {
+            margin: 0.5rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            max-width: 60%;
+            word-wrap: break-word;
+        }
+
+        /* User messages */
+        .user-message {
+            background-color: #daf8e3;
+            color: #333;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        /* Assistant messages */
+        .assistant-message {
+            background-color: #eee;
+            color: #333;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+
+        /* Make sure messages align properly */
+        #active ul li.user-message {
+            text-align: right;
+        }
+
+        #active ul li.assistant-message {
+            text-align: left;
+        }
+
+        /* Scrollable message history */
+        #quiz-history {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+        /* Scrollbar styling for active messages */
+        #quiz_history::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #quiz_history::-webkit-scrollbar-thumb {
+            background-color: #aaa;
+            border-radius: 4px;
+        }
+
+        #quiz_history::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+        }
+
+        #message-form {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Style the input to take most of the space */
+        #message {
+            flex-grow: 1;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+
+        /* Style the send button */
+        #message-form button {
+            padding: 0.5rem 1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #message-form button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main content of the page -->
+    <div class="main-content">
+        <div id = "menu">
+
+        </div>
+        <div id = "quizRequest">
+            <h1>Canaan Quiz</h1>
+            <!-- Give option for Easy, Medium, Hard as a selection-->
+            <form id="quiz-form">
+                <label for="difficulty">Select Difficulty:</label>
+                <select name="difficulty" id="difficulty">
+                    <option value="easy">Easy - Beginner questions with a lot of guidance.</option>
+                    <option value="medium">Medium - Slightly more difficult questions that take longer to answer, and with less help.</option>
+                    <option value="hard">Hard - Complicated questions with little help.</option>
+                </select>
+                <button type="submit">Start Quiz</button>
+            </form>
+            
+        </div>
+        <div id = "active" style = "display: none">
+            <h2>Active Quiz</h2>
+            <b>Question: </b><span id = "question"></span>
+            <ul id="quiz-history"></ul>
+            <form id="message-form">
+                <input type="text" id="message" placeholder="Type your message here..." required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay for Web3 Login -->
+    <div id="login-overlay">
+        <div id="login-container">
+            <h2>Web3 Login</h2>
+            <form id="login-form">
+                <button type="button" id="connect-wallet">Connect Wallet</button>
+                <button type="submit">Login</button>
+                <button type="button" id="register-button">Register</button>
+            </form>
+            <p id="status"></p>
+        </div>
+    </div>
+
+    <script>
+        let web3;
+        let account;
+
+        // Check if MetaMask is connected already.
+        async function checkConnection() {
+            if (window.ethereum) {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        account = accounts[0];
+                        document.getElementById('status').innerText = `Connected: ${account}`;
+                        document.getElementById('connect-wallet').style.display = 'none'; // Hide the button if already connected
+                    }
+                } catch (error) {
+                    console.error('Error checking connection:', error);
+                }
+            } else {
+                document.getElementById('status').innerText = 'Please install MetaMask!';
+            }
+        }
+
+        // Initialize web3 and connect to MetaMask
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    web3 = new Web3(window.ethereum);
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    account = (await web3.eth.getAccounts())[0];
+                    document.getElementById('status').innerText = `Connected: ${account}`;
+                    document.getElementById('connect-wallet').style.display = 'none'; // Hide the button after connecting
+                } catch (error) {
+                    document.getElementById('status').innerText = 'Connection failed: ' + error.message;
+                }
+            } else {
+                document.getElementById('status').innerText = 'Please install MetaMask!';
+            }
+        }
+
+        // Request a message to sign
+        async function requestMessage(address) {
+            const response = await fetch('/login/request_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ address: address })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.message;
+            } else {
+                const errorData = await response.json();
+                document.getElementById('status').innerText = 'Error: ' + errorData.error;
+                throw new Error(errorData.error);
+            }
+        }
+
+        // Verify the signature
+        async function verifySignature(username, signature) {
+            const response = await fetch('/login/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ signature: signature })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+            } else {
+                const errorData = await response.json();
+                document.getElementById('status').innerText = 'Error: ' + errorData.error;
+            }
+        }
+
+        // Handle registration
+        async function register(address) {
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: '', // Can be passed as blank
+                    email: '',    // Can be passed as blank
+                    address: address
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('status').innerText = 'Registration successful!';
+            } else {
+                const errorData = await response.json();
+                document.getElementById('status').innerText = 'Registration failed: ' + errorData.error;
+            }
+        }
+
+        // Handle login form submission
+        document.getElementById('login-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!account) {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
+                return;
+            }
+
+            try {
+                const message = await requestMessage(account);
+                console.log('Message to sign:', message);
+                console.log('Account:', account);
+                const signature = await web3.eth.personal.sign(message, account, '');
+                await verifySignature(account, signature);
+                checkSession();
+            } catch (error) {
+                document.getElementById('status').innerText = 'Login failed: ' + error.message;
+            }
+        });
+
+        // Handle register button click
+        document.getElementById('register-button').addEventListener('click', async function () {
+            if (!account) {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
+                return;
+            }
+            try {
+                await register(account);
+            } catch (error) {
+                document.getElementById('status').innerText = 'Registration failed: ' + error.message;
+            }
+        });
+
+        // Handle quiz request form
+        document.getElementById('quiz-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!account) {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
+                return;
+            }
+
+            const difficulty = document.getElementById('difficulty').value;
+            const response = await fetch('/quizzes/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ difficulty: difficulty })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Quiz started:', data);
+                document.getElementById('quizRequest').style.display = 'none';
+                active = document.getElementById('active')
+                question = document.getElementById
+                console.log(question)
+                question.innerText = data.question;
+                // Add message history
+                const messageList = document.getElementById('quiz-history');
+                const messageItem = document.createElement('li');
+                messageItem.innerText = data.question;
+                messageItem.classList.add('assistant-message');
+                active.style.display = 'block';
+            } else {
+                const errorData = await response.json();
+                document.getElementById('status').innerText = 'Error: ' + errorData.error;
+            }
+
+        });
+
+        // Handle message form submission
+        document.getElementById('message-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!account) {
+                document.getElementById('status').innerText = 'Please connect your wallet first.';
+                return;
+            }
+
+            const message = document.getElementById('message').value;
+            document.getElementById('message').value = ''; // Clear the input field
+            document.getElementById('message').disabled = true; // Disable the input field while sending
+            const response = await fetch('/quizzes/continue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const messageList = document.getElementById('quiz-history');
+                var messageItem = document.createElement('li');
+                messageItem.innerText = message;
+                messageItem.classList.add('user-message');
+                messageList.appendChild(messageItem);
+                messageItem = document.createElement('li');
+                messageItem.innerText = data;
+                messageItem.classList.add('assistant-message');
+                messageList.appendChild(messageItem);
+                document.getElementById('message').disabled = false;
+            } else {
+                const errorData = await response.json();
+                document.getElementById('status').innerText = 'Error: ' + errorData.error;
+            }
+        });
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/session_data');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.user_id) {
+                        document.getElementById('login-overlay').style.display = 'flex';
+                    } else {
+                        console.log("User ID: " + data.user_id);
+                        // User is logged in...
+                        document.getElementById('login-overlay').style.display = 'none';
+                        // Check for active quiz
+                        const quizResponse = await fetch('/quizzes/active');
+                        if (quizResponse.ok) {
+                            const quizData = await quizResponse.json();
+                            if (quizData.quiz) {
+                                // Hide the quiz request form
+                                document.getElementById('quizRequest').style.display = 'none';
+                                active = document.getElementById('active')
+                                active.style.display = 'block';
+                                document.getElementById('question').innerText = quizData.quiz.question;
+                                // Add message history
+                                const history = quizData.history;
+                                const messageList = document.getElementById('quiz-history');
+                                history.forEach(message => {
+                                    const messageItem = document.createElement('li');
+                                    messageItem.innerText = message.content;
+                                    messageList.appendChild(messageItem);
+                                    // Check if message role is user or assistant and set class accordingly.
+                                    if (message.role === 'user') {
+                                        messageItem.classList.add('user-message');
+                                    } else {
+                                        messageItem.classList.add('assistant-message');
+                                    }
+                                });
+                            } else {
+                            }
+                        } else {
+                            console.error('Error fetching active quiz:', quizResponse.statusText);
+                        }
+                    }
+                } else {
+                    // If 401 or any other error, treat it as not logged in
+                    document.getElementById('login-overlay').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Error fetching session data:', error);
+                document.getElementById('login-overlay').style.display = 'flex';
+            }
+        }
+
+        checkConnection();
+        checkSession();
+
+        // Handle wallet connection
+        document.getElementById('connect-wallet').addEventListener('click', async function () {
+            await connectWallet();
+        });
+    </script>
+</body>
+</html>
